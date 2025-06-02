@@ -1,0 +1,9 @@
+gentle/
+test/
+work/
+__pycache__/
+TTS/
+video/
+audio/
+out/
+content/
