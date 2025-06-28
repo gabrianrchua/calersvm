@@ -2,3 +2,4 @@ better_profanity==0.7.0
 playwright==1.51.0
 requests==2.32.3
 TTS==0.22.0
+torch==2.6.0

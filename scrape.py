@@ -4,9 +4,7 @@ import json
 from pathlib import Path
 
 from util import log
-
-BASE_URL = "https://old.reddit.com"
-SKIP_NSFW = True
+from consts import BASE_URL, SUBREDDIT, SKIP_NSFW
 
 # scrape entire first page of reddit, each thread's first page of top level comments
 # returns file name of where json data was saved
@@ -38,10 +36,12 @@ def scrape_reddit(subreddit: str="/r/AskReddit") -> str:
         log(f"Skipping not safe for work post")
 
       page.goto(BASE_URL + threads[i]["href"])
-      raw_top_comments = page.locator("div.sitetable.nestedlisting > * > div.entry.unvoted > * > div.usertext-body.may-blank-with\in.md-container").all()
+      raw_top_comments = page.locator("div.sitetable.nestedlisting > * > div.entry.unvoted > * > div.usertext-body.may-blank-within.md-container").all()
 
       for comment in raw_top_comments:
-        comments.append({"title": threads[i]["title"], "comment_text": comment.text_content().strip()})
+        comment_text = comment.text_content()
+        if comment_text is not None:
+          comments.append({"title": threads[i]["title"], "comment_text": comment_text.strip()})
     
     browser.close()
     
@@ -60,4 +60,4 @@ def scrape_reddit(subreddit: str="/r/AskReddit") -> str:
   return file_name
 
 if __name__ == "__main__":
-  scrape_reddit()
+  scrape_reddit(SUBREDDIT)

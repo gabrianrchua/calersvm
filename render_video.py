@@ -7,15 +7,10 @@ import subprocess
 import os
 import random
 
-from util import log, validate_file_extension, get_video_length
+from util import log, validate_file_extension, get_video_length, GpuDevice, FFMPEG_ENCODER_STRINGS
 from content_filter import clean_text
 from normalize_videos import CLIP_LENGTH
-
-XFADE_LENGTH = 1
-SPEECH_SPEED = 1.5 # speed up / down audio retaining pitch, normal = 1.0, faster = 1.5
-# min and max acceptable video length in seconds, set to -1 to disable
-MIN_VIDEO_LENGTH = 20
-MAX_VIDEO_LENGTH = 180
+from consts import XFADE_LENGTH, SPEECH_SPEED, MIN_VIDEO_LENGTH, MAX_VIDEO_LENGTH, FFMPEG_ACCELERATION, FFMPEG_VIDEO_BITRATE
 
 def format_timestamp(seconds: int) -> str:
   td = timedelta(seconds=seconds)
@@ -114,17 +109,30 @@ def build_ffmpeg_command(video_files: list[str], speech_file: str, transcript_fi
   filter_complex += f"{semi_vout_name}subtitles={transcript_file}:force_style='Fontsize=30,Alignment=10,Fontname=Roboto Black,Outline=2,Shadow=4'[vout];"
   
   if audio_file is not None:
-    filter_complex += "[0:a][1:a]amix=inputs=2:duration=shortest:weights=5 1[aout]"
+    filter_complex += "[0:a][1:a]amix=inputs=2:duration=shortest:weights=6 1[aout]"
     aout_name = "[aout]"
   else:
     aout_name = "[0:a]"
   
   cmd.append(f'"{filter_complex}"')
-  cmd.extend(["-map", "\"[vout]\"", "-map", f'"{aout_name}"', "-t", str(video_length), "-c:v", "libx264", "-c:a", "aac", "-f", "mp4", "-y", f"\"./out/{video_title}.mp4\""])
+  cmd.extend(["-map", "\"[vout]\"", "-map", f'"{aout_name}"', "-t", str(video_length), "-c:v", "libx264", "-c:a", "aac", "-f", "mp4", "-y", "-b:v", FFMPEG_VIDEO_BITRATE, f"\"./out/{video_title}.mp4\""])
 
   return cmd
 
-def build_ffmpeg_audio_speed_command(speech_file: str, output_file_name: str, rate: float = SPEECH_SPEED) -> None:
+def add_hwaccel_to_ffmpeg_command(command: list[str], device: GpuDevice = GpuDevice.CPU) -> list[str]:
+  if device == GpuDevice.CPU:
+    return command
+
+  if (device in FFMPEG_ENCODER_STRINGS):
+    hwaccel, codec = FFMPEG_ENCODER_STRINGS[device]
+    command.insert(1, "-hwaccel")
+    command.insert(2, hwaccel)
+    command.insert(len(command) - 1, "-c:v")
+    command.insert(len(command) - 1, codec)
+  
+  return command
+
+def build_ffmpeg_audio_speed_command(speech_file: str, output_file_name: str, rate: float = SPEECH_SPEED) -> list[str]:
   cmd = ["ffmpeg", "-i", f'"{speech_file}"', "-af", f"atempo={rate}", "-y", f'"{output_file_name}"']
   return cmd
 
@@ -195,6 +203,7 @@ def render_video(gentle_url: str, content: str, tts: TTS, video_files: list[str]
   # build ffmpeg command and call
   num_videos_needed = ceil(vid_length / (CLIP_LENGTH - XFADE_LENGTH))
   cmd = build_ffmpeg_command(select_videos(video_files, num_videos_needed), "./work/speech.wav", "./work/sub.srt", vid_length, video_title, audio_file)
+  cmd = add_hwaccel_to_ffmpeg_command(cmd, FFMPEG_ACCELERATION)
   Path("./out").mkdir(parents=True, exist_ok=True)
   log("Calling ffmpeg: " + " ".join(cmd))
   try:
@@ -206,6 +215,7 @@ def render_video(gentle_url: str, content: str, tts: TTS, video_files: list[str]
 
   log("Done! Exported video to " + f"./out/{video_title}.mp4")
 
+# test render a single video
 if __name__ == "__main__":
   video_pool = ["./video/splits/" + video for video in os.listdir("./video/splits") if validate_file_extension(video)]
   render_video("http://localhost:32768", "Hello world! This is a test! It is working very good. idk man idc what's going on with 2/3rds of the population. You know, this is a very long piece of text. I wonder how long the resuling video will be then. I don't really know man. I guess we'll have to see.", TTS("tts_models/en/ljspeech/vits").to("cpu"), video_pool, "./audio/Traverse The Sky - Asher Fulero.mp3", "faster")

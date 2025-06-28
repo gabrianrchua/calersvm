@@ -7,14 +7,9 @@ from TTS.api import TTS
 import os
 from sys import exit as sysexit
 
-from util import log, validate_audio_extension, validate_file_extension, clean_file_name, format_string
+from util import log, validate_audio_extension, validate_file_extension, clean_file_name, format_string, GpuDevice
 from render_video import render_video
-
-# idea: make each video have a unique title
-# supported tags: %title %date %index %uuid %randnum %mystr
-TITLE_FORMAT = "%title #reddit #shorts %index %date"
-# content format supported tags: %title %content
-CONTENT_FORMAT = "%title %content"
+from consts import TITLE_FORMAT, CONTENT_FORMAT, FFMPEG_ACCELERATION, TTS_MODEL, GENTLE_URL, COMMENTS_START_INDEX, COMMENTS_END_INDEX, COMMENTS_FILE_PATH
 
 # format title with supported tags by calling `format_string` internally
 def format_title(title: str, index: int = 0, mystr: str = "") -> str:
@@ -41,8 +36,20 @@ def render_all_videos(json_file: str, gentle_url: str, start_index: int=0, end_i
   if len(audio_pool) == 0:
     log(f"No background audio found in audio/, videos will not have background music", "W")
   
+  # initialize TTS engine, using cuda if available, otherwise only CPU supported
   log("Initializing TTS engine")
-  tts = TTS("tts_models/en/ljspeech/vits").to("cpu")
+  if FFMPEG_ACCELERATION == GpuDevice.CUDA:
+    log("Using CUDA for TTS, importing torch...")
+    import torch
+    if (torch.cuda.is_available()):
+      tts = TTS(TTS_MODEL).to("cuda")
+    else:
+      log("CUDA was not available, falling back to CPU", level="W")
+      tts = TTS(TTS_MODEL).to("cpu")
+  else:
+    log("Using CPU for TTS")
+    tts = TTS(TTS_MODEL).to("cpu")
+  log("Initialized TTS engine")
 
   end_index = end_index if end_index != -1 and end_index < len(comments) else len(comments)
   log(f"Rendering out {end_index - start_index} videos")
@@ -57,4 +64,4 @@ def render_all_videos(json_file: str, gentle_url: str, start_index: int=0, end_i
     render_video(gentle_url, content, tts, video_pool, choice(audio_pool), title)
 
 if __name__ == "__main__":
-  render_all_videos("./content/comments-04-21-25-20-33-37.json", "http://localhost:32768", 30, 40)
+  render_all_videos(COMMENTS_FILE_PATH, GENTLE_URL, COMMENTS_START_INDEX, COMMENTS_END_INDEX)

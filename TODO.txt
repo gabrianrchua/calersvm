@@ -1,3 +1,4 @@
 - Dockerize?
-- Detect and support hardware accelerated encode / decode
 - Proper frontend?
+- implement log level and verbosity setting
+- automate uploading to YT shorts, IG reels, etc.

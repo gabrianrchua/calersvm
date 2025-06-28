@@ -2,9 +2,28 @@ from datetime import datetime
 import os
 import re
 import subprocess
+from enum import Enum
 
 VIDEO_CONTAINERS = [".mp4", ".mov", ".mkv", ".avi", ".flv", ".webm", ".3gp"]
 AUDIO_CONTAINERS = [".mp3", ".wav", ".aiff", ".flac", ".m4a", ".ogg", ".mka"]
+
+class GpuDevice(Enum):
+  CPU = 0 # CPU only, no hardware acceleration
+  QSV = 1 # Intel QSV video
+  CUDA = 2 # Nvidia NVENC / NVDEC
+  AMF = 3 # AMD AMF (AMD GPU on Windows ONLY)
+  VAAPI = 4 # VAAPI (Linux ONLY, AMD or Intel GPU)
+  METAL = 5 # macOS ONLY
+
+# based on GPU device, returns the associated decoder and encoder strings for ffmpeg
+FFMPEG_ENCODER_STRINGS: dict[GpuDevice, tuple[str, str]] = {
+  GpuDevice.CPU: ("", ""),
+  GpuDevice.QSV: ("qsv", "h264_qsv"),
+  GpuDevice.CUDA: ("cuda", "h264_nvenc"),
+  GpuDevice.AMF: ("dxva2", "h264_amf"),
+  GpuDevice.VAAPI: ("vaapi", "h264_vaapi"),
+  GpuDevice.METAL: ("videotoolbox", "h264_videotoolbox")
+}
 
 # general validate file extension but defaults to video
 def validate_file_extension(filename: str, valid_extensions: list[str]=VIDEO_CONTAINERS) -> bool:

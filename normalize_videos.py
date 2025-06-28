@@ -4,14 +4,10 @@ import os
 from sys import exit as sysexit
 
 from util import log, validate_file_extension, get_video_length
+from consts import CLIP_LENGTH, FPS, WIDTH, HEIGHT
 
 # widescreen (crop sides): ffmpeg -i screen-20250315-125016.mp4 -r 60 -vf 'crop=ih/16*9:ih,scale=1080:1920' ../video/bkg0.mp4
 # naive scale: ffmpeg -i tmp.mp4 -r 60 -vf 'scale=1080:1920' bkg0.mp4
-
-CLIP_LENGTH = 5
-WIDTH = 1080
-HEIGHT = 1920
-FPS = 60
 
 def render_video_split(filename: str, start_time: int, output_filename: str) -> None:
   try:
