@@ -59,9 +59,15 @@ def render_all_videos(json_file: str, gentle_url: str, start_index: int=0, end_i
     num_rendered += 1
     comment = comments[i]
     title = clean_file_name(format_title(comment["title"], i))
-    content = format_string(CONTENT_FORMAT, title=comment["title"], content=comment["comment_text"])
+    content = format_string(CONTENT_FORMAT, title=title, content=comment["comment_text"])
     log(f"Rendering video {num_rendered}/{end_index - start_index}: '{title}'")
-    render_video(gentle_url, content, tts, video_pool, choice(audio_pool), title)
+    try:
+      render_video(gentle_url, content, tts, video_pool, choice(audio_pool), title)
+    except Exception as ex:
+      log(f"An error occurred trying to render video #{i} - {title}", "E")
+      print(ex)
+  
+  log("Completed rendering all videos!")
 
 if __name__ == "__main__":
   render_all_videos(COMMENTS_FILE_PATH, GENTLE_URL, COMMENTS_START_INDEX, COMMENTS_END_INDEX)

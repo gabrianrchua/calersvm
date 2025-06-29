@@ -3,6 +3,9 @@ import os
 import re
 import subprocess
 from enum import Enum
+from pathlib import Path
+from typing import Any, TextIO
+import atexit
 
 VIDEO_CONTAINERS = [".mp4", ".mov", ".mkv", ".avi", ".flv", ".webm", ".3gp"]
 AUDIO_CONTAINERS = [".mp3", ".wav", ".aiff", ".flac", ".m4a", ".ogg", ".mka"]
@@ -25,6 +28,18 @@ FFMPEG_ENCODER_STRINGS: dict[GpuDevice, tuple[str, str]] = {
   GpuDevice.METAL: ("videotoolbox", "h264_videotoolbox")
 }
 
+# global variable to hold log_file
+log_file: TextIO | None = None
+
+# initialize logger
+def init_logger():
+  global log_file
+
+  Path("./logs").mkdir(parents=True, exist_ok=True)
+  log_path: str = f"./logs/run-{datetime.now().strftime('%m-%d-%y-%H-%M-%S')}.txt"
+  log_file = open(log_path, "a")
+  atexit.register(log_file.close)
+
 # general validate file extension but defaults to video
 def validate_file_extension(filename: str, valid_extensions: list[str]=VIDEO_CONTAINERS) -> bool:
   _, extension = os.path.splitext(filename)
@@ -34,12 +49,24 @@ def validate_file_extension(filename: str, valid_extensions: list[str]=VIDEO_CON
 def validate_audio_extension(filename: str) -> bool:
   return validate_file_extension(filename, AUDIO_CONTAINERS)
 
-# TODO: save logs to file
-def log(str: str, level: str="I", show_timestamp: bool=True):
+def log(log_text: Any, level: str="I", show_timestamp: bool=True):
+  global log_file
+
+  if log_file is None:
+    init_logger()
+
+  log_header_str = f"[{level}] [{datetime.now().strftime('%m-%d-%y %H:%M:%S')}] " if show_timestamp else f"[{level}] "
   if show_timestamp:
-    print(f"[{level}] [{datetime.now().strftime('%m-%d-%y %H:%M:%S')}] {str}")
+    print(log_header_str, log_text)
   else:
-    print(f"[{level}] {str}")
+    print(log_header_str, log_text)
+  
+  # write logs to logfile
+  if log_file is not None:
+    log_file.write(log_header_str)
+    log_file.write(str(log_text))
+    log_file.write("\n")
+    log_file.flush()
 
 def clean_file_name(filename: str, replacement_text: str="") -> str:
   # remove or replace invalid characters

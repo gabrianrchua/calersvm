@@ -30,7 +30,13 @@ playwright install-deps
 playwright install chromium
 ```
 
-5. Install `ffmpeg` if you don't have it already
+5. (Linux) Install `espeak` if you don't have it already
+
+```
+sudo apt install espeak
+```
+
+6. Install `ffmpeg` if you don't have it already
 
 <details>
 <summary>Linux: Debian and derivatives</summary>
@@ -70,12 +76,12 @@ brew install ffmpeg
 <a href="https://www.ffmpeg.org/download.html#build-mac">www.ffmpeg.org</a>
 </details>
 
-6. Install Docker if you don't have it already
+7. Install Docker if you don't have it already
 
    - If on Linux, recommended to use [Docker Engine](https://docs.docker.com/engine/install/)
    - If on macOS or Windows, use [Docker Desktop](https://docs.docker.com/desktop/)
 
-7. (Optional, highly recommended) Configure hardware accelerated video encoding and decoding in `consts.py`
+8. (Optional, highly recommended) Configure hardware accelerated video encoding and decoding in `consts.py`
 
    - This will be used by `ffmpeg` and can drastically reduce the time it takes to render a video. The total time can easily be cut in half per video!
    - In `render_video.py`, specify your applicable `GpuDevice` based on your hardware and operating system.
@@ -94,7 +100,7 @@ brew install ffmpeg
 | AMD    | `AMF`   | `VAAPI` | `METAL` |
 | No GPU | `CPU`   | `CPU`   | `CPU`   |
 
-8. (Optional) Configure content filter
+9. (Optional) Configure content filter
 
    - Edit rules in `content_filter.py`
    - Add rules in the format `("*badword*", "substitution")`
