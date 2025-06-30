@@ -7,7 +7,7 @@ import subprocess
 import os
 import random
 
-from util import log, validate_file_extension, get_video_length, GpuDevice, FFMPEG_ENCODER_STRINGS
+from util import log, validate_file_extension, get_video_length, add_hwaccel_to_ffmpeg_command
 from content_filter import clean_text
 from normalize_videos import CLIP_LENGTH
 from consts import XFADE_LENGTH, SPEECH_SPEED, MIN_VIDEO_LENGTH, MAX_VIDEO_LENGTH, FFMPEG_ACCELERATION, FFMPEG_VIDEO_BITRATE
@@ -119,24 +119,15 @@ def build_ffmpeg_command(video_files: list[str], speech_file: str, transcript_fi
 
   return cmd
 
-def add_hwaccel_to_ffmpeg_command(command: list[str], device: GpuDevice = GpuDevice.CPU) -> list[str]:
-  if device == GpuDevice.CPU:
-    return command
-
-  if (device in FFMPEG_ENCODER_STRINGS):
-    hwaccel, codec = FFMPEG_ENCODER_STRINGS[device]
-    command.insert(1, "-hwaccel")
-    command.insert(2, hwaccel)
-    command.insert(len(command) - 1, "-c:v")
-    command.insert(len(command) - 1, codec)
-  
-  return command
-
 def build_ffmpeg_audio_speed_command(speech_file: str, output_file_name: str, rate: float = SPEECH_SPEED) -> list[str]:
   cmd = ["ffmpeg", "-i", f'"{speech_file}"', "-af", f"atempo={rate}", "-y", f'"{output_file_name}"']
   return cmd
 
 def render_video(gentle_url: str, content: str, tts: TTS, video_files: list[str], audio_file: str | None, video_title: str, censor_text: bool = True) -> None:
+  if os.path.exists(f"./out/{video_title}.mp4"):
+    log(f"Skipping, video \"{video_title}.mp4\" already exists")
+    return
+  
   # create working directory if not exists
   Path("./work").mkdir(parents=True, exist_ok=True)
 

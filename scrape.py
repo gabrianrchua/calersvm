@@ -2,6 +2,7 @@ from playwright.sync_api import sync_playwright
 from datetime import datetime
 import json
 from pathlib import Path
+import emoji
 
 from util import log
 from consts import BASE_URL, SUBREDDIT, SKIP_NSFW
@@ -41,7 +42,9 @@ def scrape_reddit(subreddit: str="/r/AskReddit") -> str:
       for comment in raw_top_comments:
         comment_text = comment.text_content()
         if comment_text is not None:
-          comments.append({"title": threads[i]["title"], "comment_text": comment_text.strip()})
+          # replace emojis with "<emoji name> emoji"
+          cleaned_text = emoji.demojize(comment_text, delimiters=("", " emoji ")).replace("_", " ").strip()
+          comments.append({"title": threads[i]["title"], "comment_text": cleaned_text})
     
     browser.close()
     

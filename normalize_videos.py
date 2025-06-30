@@ -3,8 +3,8 @@ import subprocess
 import os
 from sys import exit as sysexit
 
-from util import log, validate_file_extension, get_video_length
-from consts import CLIP_LENGTH, FPS, WIDTH, HEIGHT
+from util import log, validate_file_extension, get_video_length, add_hwaccel_to_ffmpeg_command
+from consts import CLIP_LENGTH, FPS, WIDTH, HEIGHT, FFMPEG_ACCELERATION
 
 # widescreen (crop sides): ffmpeg -i screen-20250315-125016.mp4 -r 60 -vf 'crop=ih/16*9:ih,scale=1080:1920' ../video/bkg0.mp4
 # naive scale: ffmpeg -i tmp.mp4 -r 60 -vf 'scale=1080:1920' bkg0.mp4
@@ -12,7 +12,8 @@ from consts import CLIP_LENGTH, FPS, WIDTH, HEIGHT
 def render_video_split(filename: str, start_time: int, output_filename: str) -> None:
   try:
     # try widescreen crop first (better result)
-    subprocess.run(["ffmpeg", "-ss", str(start_time), "-i", filename, "-r", str(FPS), "-t", str(CLIP_LENGTH), "-vf", f"crop=ih/16*9:ih,scale={WIDTH}:{HEIGHT}", output_filename], check=True)
+    command = add_hwaccel_to_ffmpeg_command(["ffmpeg", "-ss", str(start_time), "-i", filename, "-r", str(FPS), "-t", str(CLIP_LENGTH), "-vf", f"crop=ih/16*9:ih,scale={WIDTH}:{HEIGHT}", output_filename], FFMPEG_ACCELERATION)
+    subprocess.run(command, check=True)
   except subprocess.CalledProcessError as ex1:
     # try naive scale if fails
     try:
@@ -22,7 +23,9 @@ def render_video_split(filename: str, start_time: int, output_filename: str) -> 
       except FileNotFoundError:
         # did not get created at all <-- okay
         pass
-      subprocess.run(["ffmpeg", "-ss", str(start_time), "-i", filename, "-r", str(FPS), "-t", str(CLIP_LENGTH), "-vf", f"scale={WIDTH}:{HEIGHT}", output_filename], check=True)
+      # then run naive scale (simple squish)
+      command = add_hwaccel_to_ffmpeg_command(["ffmpeg", "-ss", str(start_time), "-i", filename, "-r", str(FPS), "-t", str(CLIP_LENGTH), "-vf", f"scale={WIDTH}:{HEIGHT}", output_filename], FFMPEG_ACCELERATION)
+      subprocess.run(command, check=True)
     except subprocess.CalledProcessError as ex2:
       log(f"Failed to split video '{filename}': {str(ex1)} {str(ex2)}", "E")
       return

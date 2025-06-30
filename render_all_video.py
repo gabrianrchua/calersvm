@@ -1,5 +1,4 @@
 import json
-import re
 from datetime import datetime
 from uuid import uuid4
 from random import randint, choice

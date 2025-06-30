@@ -110,3 +110,17 @@ def format_string(template: str, **kwargs) -> str:
     return kwargs.get(key, match.group()) # replace if key exists, else keep original
   
   return pattern.sub(replace_match, template)
+
+# insert hardware acceleration components to ffmpeg command list
+def add_hwaccel_to_ffmpeg_command(command: list[str], device: GpuDevice = GpuDevice.CPU) -> list[str]:
+  if device == GpuDevice.CPU:
+    return command
+
+  if (device in FFMPEG_ENCODER_STRINGS):
+    hwaccel, codec = FFMPEG_ENCODER_STRINGS[device]
+    command.insert(1, "-hwaccel")
+    command.insert(2, hwaccel)
+    command.insert(len(command) - 1, "-c:v")
+    command.insert(len(command) - 1, codec)
+  
+  return command
