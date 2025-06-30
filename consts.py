@@ -10,6 +10,10 @@ BASE_URL = "https://old.reddit.com"
 # which subreddit to scrape. text-based recommended
 SUBREDDIT = "/r/AskReddit"
 
+# gather only post body, or only comments?
+# gathering post body only is good for story-type subreddits, comments only is good for asking-type subreddits
+SCRAPE_ONLY_POST = False
+
 # skip not safe for work posts (highly recommended)
 SKIP_NSFW = True
 
