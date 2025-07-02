@@ -32,7 +32,7 @@ MIN_VIDEO_LENGTH = 20
 MAX_VIDEO_LENGTH = 180
 
 # which device to use for ffmpeg encode/decode
-FFMPEG_ACCELERATION: GpuDevice = GpuDevice.QSV
+FFMPEG_ACCELERATION: GpuDevice = GpuDevice.CPU
 
 # ffmpeg video bitrate
 FFMPEG_VIDEO_BITRATE = "10M"
@@ -69,4 +69,4 @@ COMMENTS_START_INDEX = 0
 COMMENTS_END_INDEX = -1
 
 # path of the content you want to use
-COMMENTS_FILE_PATH = "content/comments-06-25-25-21-39-09.json"
+COMMENTS_FILE_PATH = "content/INSERT-FILE-NAME-HERE.json"
