@@ -124,16 +124,18 @@ def build_ffmpeg_audio_speed_command(speech_file: str, output_file_name: str, ra
   return cmd
 
 def render_video(gentle_url: str, content: str, tts: TTS, video_files: list[str], audio_file: str | None, video_title: str, censor_text: bool = True) -> None:
-  if os.path.exists(f"./out/{video_title}.mp4"):
-    log(f"Skipping, video \"{video_title}.mp4\" already exists")
-    return
-  
   # create working directory if not exists
   Path("./work").mkdir(parents=True, exist_ok=True)
 
   # apply content filter if requested
   if censor_text:
     content = clean_text(content)
+    video_title = clean_text(video_title)
+
+  # skip if this file already exists
+  if os.path.exists(f"./out/{video_title}.mp4"):
+    log(f"Skipping, video \"{video_title}.mp4\" already exists")
+    return
 
   # write transcript file
   with open("./work/speech.txt", "w") as f:

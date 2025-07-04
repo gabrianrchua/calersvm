@@ -70,3 +70,22 @@ COMMENTS_END_INDEX = -1
 
 # path of the content you want to use
 COMMENTS_FILE_PATH = "content/INSERT-FILE-NAME-HERE.json"
+
+# ---
+# auto-upload related constants
+# ---
+
+# description of shorts (not important)
+DESCRIPTION = "Created using CALERSVM, the Completely Automated Low Effort Reddit Short Form Video Maker. Check it out on GitHub."
+
+# how long to wait in seconds for a video to upload
+# best to pick a relatively long time to ensure video is definitely uploaded
+UPLOAD_WAIT_TIME = 30
+
+# how long to wait in seconds between video uploads
+UPLOAD_INTERVAL = 5 * 60
+
+# start and end indices of videos to upload from out/
+# to render all, set start index to 0 and end index to -1
+UPLOAD_START_INDEX = 0
+UPLOAD_END_INDEX = -1

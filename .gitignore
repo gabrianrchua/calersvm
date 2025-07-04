@@ -8,3 +8,4 @@ audio/
 out/
 content/
 logs/
+playwright-profile/
