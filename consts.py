@@ -83,7 +83,8 @@ DESCRIPTION = "Created using CALERSVM, the Completely Automated Low Effort Reddi
 UPLOAD_WAIT_TIME = 30
 
 # how long to wait in seconds between video uploads
-UPLOAD_INTERVAL = 5 * 60
+# 10 uploads / day for unverified
+UPLOAD_INTERVAL = 2.4 * 60 * 60
 
 # start and end indices of videos to upload from out/
 # to render all, set start index to 0 and end index to -1

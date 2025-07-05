@@ -5,7 +5,7 @@ from pathlib import Path
 import emoji
 import re
 
-from util import log
+from util import Log
 from consts import BASE_URL, SUBREDDIT, SKIP_NSFW, SCRAPE_ONLY_POST
 
 # helper function to remove emojis and links and strip whitespace
@@ -21,12 +21,12 @@ def scrape_reddit(subreddit: str="/r/AskReddit") -> str:
 
   # launch playwright to scrape
   with sync_playwright() as p:
-    log("Launching browser")
+    Log.info("Launching browser")
     browser = p.chromium.launch(headless=False)
     page = browser.new_page()
     page.goto(BASE_URL + subreddit)
 
-    log("Fetching thread titles and links")
+    Log.info("Fetching thread titles and links")
     raw_links = page.locator("a.title").all()
     for link in raw_links:
       href = link.get_attribute("href")
@@ -35,19 +35,19 @@ def scrape_reddit(subreddit: str="/r/AskReddit") -> str:
         threads.append({"title": text, "href": href})
 
     if SCRAPE_ONLY_POST:
-      log("Starting main loop to gather post contents")
+      Log.info("Starting main loop to gather post contents")
     else:
-      log("Starting main loop to gather top comments")
+      Log.info("Starting main loop to gather top comments")
     
     for i in range(len(threads)):
-      log(f"Gathering {'post content' if SCRAPE_ONLY_POST else 'top comments'} in link {i+1}/{len(threads)}: {threads[i]['title']} at {BASE_URL + threads[i]['href']}")
+      Log.info(f"Gathering {'post content' if SCRAPE_ONLY_POST else 'top comments'} in link {i+1}/{len(threads)}: {threads[i]['title']} at {BASE_URL + threads[i]['href']}")
       
       if "/comments/" not in threads[i]["href"]:
-        log(f"Skipping, may be ad")
+        Log.info(f"Skipping, may be ad")
         continue
       
       if SKIP_NSFW and "/over18" in threads[i]["href"]:
-        log(f"Skipping not safe for work post")
+        Log.info(f"Skipping not safe for work post")
 
       page.goto(BASE_URL + threads[i]["href"])
       
@@ -71,12 +71,12 @@ def scrape_reddit(subreddit: str="/r/AskReddit") -> str:
 
   # write out json file with content
   file_name = f"./content/comments-{subreddit.replace('/r/', '')}-{datetime.now().strftime('%m-%d-%y-%H-%M-%S')}.json"
-  log(f"Completed scraping comments, saving to '{file_name}'")
+  Log.info(f"Completed scraping comments, saving to '{file_name}'")
 
   with open(file_name, "w") as f:
     json.dump(comments, f)
 
-  log("Successfully saved content!")
+  Log.info("Successfully saved content!")
 
   return file_name
 

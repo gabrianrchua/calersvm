@@ -4,76 +4,89 @@ import shutil
 from pathlib import Path
 
 from consts import DESCRIPTION, UPLOAD_WAIT_TIME, UPLOAD_INTERVAL, UPLOAD_START_INDEX, UPLOAD_END_INDEX
-from util import log, validate_file_extension
+from util import Log, validate_file_extension
 
-def upload_one_video(page: Page, video_path: str):
-  log(f"Starting upload of {video_path}")
+def upload_one_video(page: Page, video_path: str) -> None:
+  Log.info(f"Starting upload of {video_path}")
 
   # click create button
-  create_button: Locator = page.get_by_role("button", name="Create").all()[0]
+  Log.verbose("Clicking Create button in header")
+  create_button: Locator = page.get_by_role("button", name="Create").first
   create_button.hover()
   create_button.click()
 
   # click upload videos button
+  Log.verbose("Clicking Upload videos option in dropdown")
   upload_button: Locator = page.get_by_text("Upload videos")
   upload_button.hover()
   upload_button.click()
 
   # add file to file picker
+  Log.verbose("Adding video file to upload picker")
   file_picker: Locator = page.locator('input[type="file"]')
   file_picker.set_input_files(video_path)
 
   # wait a moment for modal to update
+  Log.verbose("Waiting 5s for upload modal to update")
   page.wait_for_timeout(5000)
 
   # fill description field
-  description_box = page.locator("div#textbox[aria-label='Tell viewers about your video (type @ to mention a channel)']")
+  Log.verbose("Filling description field")
+  description_box: Locator = page.locator("div#textbox[aria-label='Tell viewers about your video (type @ to mention a channel)']")
   description_box.hover()
   description_box.click()
   description_box.fill(DESCRIPTION)
 
   # click coppa required radiobutton
+  Log.verbose("Selecting not made for kids coppa radiobutton")
   coppa_radio: Locator = page.get_by_role("radio", name="No, it's not made for kids")
   coppa_radio.hover()
   coppa_radio.click()
 
   # click next 3 times
+  Log.verbose("Clicking next 3 times")
   for i in range(3):
-    next_button: Locator = page.get_by_role("button", name="Next", exact=True).all()[0]
+    next_button: Locator = page.get_by_role("button", name="Next", exact=True).first
     next_button.hover()
     next_button.click()
   
   # click public radiobutton
+  Log.verbose("Selecting public release radiobutton")
   public_radio: Locator = page.get_by_role("radio", name="Public")
   public_radio.hover()
   public_radio.click()
   
   # wait 30s for upload
-  log(f"Waiting {UPLOAD_WAIT_TIME}s for upload...")
+  Log.info(f"Waiting {UPLOAD_WAIT_TIME}s for upload...")
   page.wait_for_timeout(UPLOAD_WAIT_TIME * 1000)
-  log("Done waiting")
+  Log.info("Done waiting")
 
   # click publish button
-  publish_button = page.get_by_role("button", name="Publish", exact=True).all()[0]
+  Log.verbose("Clicking Publish button")
+  publish_button = page.get_by_role("button", name="Publish", exact=True).first
   publish_button.hover()
   publish_button.click()
 
+  # wait a moment for the modal to appear
+  Log.verbose("Waiting 5s for the final modal to appear")
+  page.wait_for_timeout(5000)
+
   # click close button after publish
-  page.wait_for_timeout(5000) # wait a moment for the modal to appear
-  close_button: Locator = page.get_by_role("button", name="Close", exact=True).all()[0]
+  Log.verbose("Clicking Close button")
+  close_button: Locator = page.get_by_role("button", name="Close", exact=True).first
   close_button.hover()
   close_button.click()
 
-  log("Completed uploading!")
+  Log.info("Completed uploading!")
 
 # uploads all videos in out/ ending in .mp4
 def upload_all_videos() -> None:
   # get list of videos to upload
   videos: list[str] = []
   try:
-    videos = os.listdir("./video")
+    videos = os.listdir("./out")
   except FileNotFoundError:
-    log("out/ folder does not exist, please run the renderer first to get some output videos", "F")
+    Log.fatal("out/ folder does not exist, please run the renderer first to get some output videos")
     return
   videos = [video for video in videos if validate_file_extension(video, [".mp4"])]
 
@@ -101,14 +114,14 @@ def upload_all_videos() -> None:
     page.goto("https://studio.youtube.com")
 
     if page.url.startswith("https://accounts.google.com"):
-      log("Redirected to log in page; not logged in")
+      Log.info("Redirected to log in page; not logged in")
       input("Log into YouTube now manually, then press [Enter] to continue...")
 
-    log("Should be logged in!")
+    Log.info("Should be logged in!")
 
     start_index = UPLOAD_START_INDEX
     end_index = UPLOAD_END_INDEX if UPLOAD_END_INDEX != -1 and UPLOAD_END_INDEX < len(videos) else len(videos)
-    log(f"Rendering out {end_index - start_index} videos")
+    Log.info(f"Rendering out {end_index - start_index} videos")
 
     # main loop to upload videos
     num_uploaded = 0
@@ -116,26 +129,42 @@ def upload_all_videos() -> None:
       num_uploaded += 1
       video = videos[i]
       video_path = f"./out/{video}"
-      log(f"Beginning upload for video {num_uploaded}/{end_index - start_index}: '{video}'")
+      Log.info(f"Beginning upload for video {num_uploaded}/{end_index - start_index}: '{video}'")
 
-      try:
-        upload_one_video(page, video_path)
-        log(f"Completed uploading {video}")
+      # ensure file isn't empty
+      if os.path.getsize(video_path) == 0:
+        Log.warn(f"Skipping {video}, file is empty")
         # move file to done/ folder
         try:
           shutil.move(video_path, f"./out/done/{video}")
-          log(f"Moved {video} to out/done/ folder")
+          Log.info(f"Moved {video} to out/done/ folder")
         except Exception as ex:
-          log(f"Failed to move {video} to done folder", "E")
-          log(ex, "E")
+          Log.error(f"Failed to move {video} to done folder")
+          Log.error(ex)
+        continue
+
+      # attempt upload and move to done/
+      try:
+        upload_one_video(page, video_path)
+        Log.info(f"Completed uploading {video}")
+        # move file to done/ folder
+        try:
+          shutil.move(video_path, f"./out/done/{video}")
+          Log.info(f"Moved {video} to out/done/ folder")
+        except Exception as ex:
+          Log.error(f"Failed to move {video} to done folder")
+          Log.error(ex)
       except Exception as ex:
-        log(f"Failed to upload {videos[i]}", "E")
-        log(ex, "E")
+        Log.error(f"Failed to upload {videos[i]}")
+        Log.error(ex)
+        # return to main page ("refresh")
+        page.goto("https://studio.youtube.com")
       
       # wait for delay between uploads
-      log(f"Waiting {UPLOAD_INTERVAL}s before uploading next video")
+      Log.info(f"Waiting {UPLOAD_INTERVAL}s before uploading next video")
       page.wait_for_timeout(UPLOAD_INTERVAL * 1000)
 
+    Log.info(f"Completed uploading {end_index - start_index} videos!")
     browser.close()
 
 if __name__ == "__main__":

@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Any, TextIO
 import atexit
 
+from consts import LOG_VERBOSITY
+
 VIDEO_CONTAINERS = [".mp4", ".mov", ".mkv", ".avi", ".flv", ".webm", ".3gp"]
 AUDIO_CONTAINERS = [".mp3", ".wav", ".aiff", ".flac", ".m4a", ".ogg", ".mka"]
 
@@ -28,17 +30,69 @@ FFMPEG_ENCODER_STRINGS: dict[GpuDevice, tuple[str, str]] = {
   GpuDevice.METAL: ("videotoolbox", "h264_videotoolbox")
 }
 
-# global variable to hold log_file
-log_file: TextIO | None = None
+class Log:
+  _log_file: TextIO | None = None
 
-# initialize logger
-def init_logger():
-  global log_file
+  _log_levels: dict[str, int] = {
+    "verbose": 0,
+    "info": 1,
+    "warn": 2,
+    "error": 3,
+    "fatal": 4,
+  }
 
-  Path("./logs").mkdir(parents=True, exist_ok=True)
-  log_path: str = f"./logs/run-{datetime.now().strftime('%m-%d-%y-%H-%M-%S')}.txt"
-  log_file = open(log_path, "a")
-  atexit.register(log_file.close)
+  @staticmethod
+  def _init_logger() -> None:
+    if Log._log_file is not None:
+      return
+    
+    Path("./logs").mkdir(parents=True, exist_ok=True)
+    log_path: str = f"./logs/run-{datetime.now().strftime('%m-%d-%y-%H-%M-%S')}.txt"
+    log_file = open(log_path, "a")
+    atexit.register(log_file.close)
+  
+  @staticmethod
+  def _should_log(level: str) -> bool:
+    # should only log with level >= configured LOG_VERBOSITY, with default verbosity of "verbose"
+    return Log._log_levels.get(level, 99) >= Log._log_levels.get(LOG_VERBOSITY, 0)
+
+  @staticmethod
+  def _log(message: Any, level: str="verbose", show_timestamp: bool=True) -> None:
+    if not Log._should_log(level):
+      return
+
+    if Log._log_file is None:
+      Log._init_logger()
+
+    timestamp = datetime.now().strftime('%m-%d-%y %H:%M:%S')
+    log_header = f"[{level[0].upper()}] [{timestamp}] " if show_timestamp else f"[{level[0].upper()}] "
+    full_message = f"{log_header}{message}"
+
+    print(full_message)
+
+    if Log._log_file is not None:
+      Log._log_file.write(full_message + "\n")
+      Log._log_file.flush()
+  
+  @staticmethod
+  def verbose(message: Any, show_timestamp: bool = True) -> None:
+    Log._log(message, "verbose", show_timestamp)
+
+  @staticmethod
+  def info(message: Any, show_timestamp: bool = True) -> None:
+    Log._log(message, "info", show_timestamp)
+
+  @staticmethod
+  def warn(message: Any, show_timestamp: bool = True) -> None:
+    Log._log(message, "warn", show_timestamp)
+
+  @staticmethod
+  def error(message: Any, show_timestamp: bool = True) -> None:
+    Log._log(message, "error", show_timestamp)
+
+  @staticmethod
+  def fatal(message: Any, show_timestamp: bool = True) -> None:
+    Log._log(message, "fatal", show_timestamp)
 
 # general validate file extension but defaults to video
 def validate_file_extension(filename: str, valid_extensions: list[str]=VIDEO_CONTAINERS) -> bool:
@@ -48,25 +102,6 @@ def validate_file_extension(filename: str, valid_extensions: list[str]=VIDEO_CON
 # validate file extension for audio files, calls `validate_file_extension`
 def validate_audio_extension(filename: str) -> bool:
   return validate_file_extension(filename, AUDIO_CONTAINERS)
-
-def log(log_text: Any, level: str="I", show_timestamp: bool=True):
-  global log_file
-
-  if log_file is None:
-    init_logger()
-
-  log_header_str = f"[{level}] [{datetime.now().strftime('%m-%d-%y %H:%M:%S')}] " if show_timestamp else f"[{level}] "
-  if show_timestamp:
-    print(log_header_str, log_text)
-  else:
-    print(log_header_str, log_text)
-  
-  # write logs to logfile
-  if log_file is not None:
-    log_file.write(log_header_str)
-    log_file.write(str(log_text))
-    log_file.write("\n")
-    log_file.flush()
 
 def clean_file_name(filename: str, replacement_text: str="") -> str:
   # remove or replace invalid characters

@@ -7,7 +7,7 @@ import subprocess
 import os
 import random
 
-from util import log, validate_file_extension, get_video_length, add_hwaccel_to_ffmpeg_command
+from util import Log, validate_file_extension, get_video_length, add_hwaccel_to_ffmpeg_command
 from content_filter import clean_text
 from normalize_videos import CLIP_LENGTH
 from consts import XFADE_LENGTH, SPEECH_SPEED, MIN_VIDEO_LENGTH, MAX_VIDEO_LENGTH, FFMPEG_ACCELERATION, FFMPEG_VIDEO_BITRATE
@@ -134,7 +134,7 @@ def render_video(gentle_url: str, content: str, tts: TTS, video_files: list[str]
 
   # skip if this file already exists
   if os.path.exists(f"./out/{video_title}.mp4"):
-    log(f"Skipping, video \"{video_title}.mp4\" already exists")
+    Log.info(f"Skipping, video \"{video_title}.mp4\" already exists")
     return
 
   # write transcript file
@@ -142,26 +142,26 @@ def render_video(gentle_url: str, content: str, tts: TTS, video_files: list[str]
     f.write(content)
 
   # generate speech using provided TTS
-  log("Generating speech using TTS")
+  Log.info("Generating speech using TTS")
   #tts = TTS("tts_models/en/ljspeech/vits").to("cpu")
   tts.tts_to_file(text=content, file_path="./work/speech_pre.wav")
-  log("Completed generating speech")
+  Log.info("Completed generating speech")
 
   # apply audio speed mulitplier with ffmpeg
-  log(f"Applying audio multiplier of {SPEECH_SPEED}x")
+  Log.info(f"Applying audio multiplier of {SPEECH_SPEED}x")
   cmd = build_ffmpeg_audio_speed_command("./work/speech_pre.wav", "./work/speech.wav", SPEECH_SPEED)
-  log("Calling ffmpeg: " + " ".join(cmd))
+  Log.verbose("Calling ffmpeg: " + " ".join(cmd))
   try:
     subprocess.run(" ".join(cmd), cwd=os.getcwd(), shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
   except subprocess.CalledProcessError as e:
-    log("Error applying audio speed with ffmpeg: " + str(e), "E")
-    print(e.output)
+    Log.error("Error applying audio speed with ffmpeg: " + str(e))
+    Log.error(e.output)
     return
 
   # check audio length and reject if too long / short
   speech_length = get_video_length("./work/speech.wav")
   if (MIN_VIDEO_LENGTH != -1 and speech_length < MIN_VIDEO_LENGTH) or (MAX_VIDEO_LENGTH != -1 and speech_length > MAX_VIDEO_LENGTH):
-    log(f"Rejected, video length of {speech_length}s was outside desired length of {MIN_VIDEO_LENGTH}-{MAX_VIDEO_LENGTH}s")
+    Log.info(f"Rejected, video length of {speech_length}s was outside desired length of {MIN_VIDEO_LENGTH}-{MAX_VIDEO_LENGTH}s")
     return
 
   # align text using gentle
@@ -172,9 +172,9 @@ def render_video(gentle_url: str, content: str, tts: TTS, video_files: list[str]
       "transcript": ("speech.txt", transcript_file, "text/plain"),
     }
     request_url = gentle_url + "/transcriptions?async=false"
-    log("Aligning speech text using " + request_url)
+    Log.info("Aligning speech text using " + request_url)
     response = requests.post(request_url, files=files)
-    log("Completed aligning text")
+    Log.info("Completed aligning text")
 
   aligned_words = response.json()["words"]
   words_timing = [] # list of tuple (start_time, word)
@@ -185,28 +185,28 @@ def render_video(gentle_url: str, content: str, tts: TTS, video_files: list[str]
       words_timing.append((word["start"], word["word"]))
 
   # generate SRT for subtitles
-  log("Generating SRT")
+  Log.info("Generating SRT")
   srt_text, vid_length = create_srt(words_timing)
 
   with open("./work/sub.srt", "w", encoding="utf-8") as f:
     f.write(srt_text)
 
-  log("SRT saved")
+  Log.info("SRT saved")
   
   # build ffmpeg command and call
   num_videos_needed = ceil(vid_length / (CLIP_LENGTH - XFADE_LENGTH))
   cmd = build_ffmpeg_command(select_videos(video_files, num_videos_needed), "./work/speech.wav", "./work/sub.srt", vid_length, video_title, audio_file)
   cmd = add_hwaccel_to_ffmpeg_command(cmd, FFMPEG_ACCELERATION)
   Path("./out").mkdir(parents=True, exist_ok=True)
-  log("Calling ffmpeg: " + " ".join(cmd))
+  Log.verbose("Calling ffmpeg: " + " ".join(cmd))
   try:
     subprocess.run(" ".join(cmd), cwd=os.getcwd(), shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
   except subprocess.CalledProcessError as e:
-    log("Error exporting video with ffmpeg: " + str(e), "E")
-    print(e.output)
+    Log.error("Error exporting video with ffmpeg: " + str(e))
+    Log.error(e.output)
     return
 
-  log("Done! Exported video to " + f"./out/{video_title}.mp4")
+  Log.info("Done! Exported video to " + f"./out/{video_title}.mp4")
 
 # test render a single video
 if __name__ == "__main__":
