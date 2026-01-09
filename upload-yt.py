@@ -2,6 +2,7 @@ from playwright.sync_api import sync_playwright, Page, Locator
 import os
 import shutil
 from pathlib import Path
+from datetime import datetime
 
 from consts import DESCRIPTION, UPLOAD_WAIT_TIME, UPLOAD_INTERVAL, UPLOAD_START_INDEX, UPLOAD_END_INDEX
 from util import Log, validate_file_extension
@@ -157,6 +158,9 @@ def upload_all_videos() -> None:
       except Exception as ex:
         Log.error(f"Failed to upload {videos[i]}")
         Log.error(ex)
+        # take screenshot for logging
+        Path("./logs/screenshots").mkdir(parents=True, exist_ok=True)
+        page.screenshot(path=f"./logs/screenshots/pw-err-{datetime.now().strftime('%m-%d-%y-%H:%M:%S')}.png")
         # return to main page ("refresh")
         page.goto("https://studio.youtube.com")
       
